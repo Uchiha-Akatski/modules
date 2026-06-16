@@ -24,7 +24,7 @@ class ChatModuleMod(loader.Module):
         self._client = client
         self._db = db
         self.xdlib = await self.import_lib(
-            "https://raw.githubusercontent.com/xdesai96/modules/refs/heads/main/libs/xdlib.py",
+            "https://raw.githubusercontent.com/Uchiha-Akatski/modules/refs/heads/main/libs/xdlib.py",
             suspend_on_error=True,
         )
 
