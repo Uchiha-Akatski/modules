@@ -1,6 +1,6 @@
 # meta developer: @xdesai
 # scope: disable_onload_docs
-# packurl: https://raw.githubusercontent.com/xdesai96/modules/refs/heads/main/translations/chatmodule.yml
+# packurl: https://raw.githubusercontent.com/Uchiha-Akatski/modules/refs/heads/main/translations/chatmodule.yml
 
 import logging
 import typing
