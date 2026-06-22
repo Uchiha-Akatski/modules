@@ -627,7 +627,6 @@ class ChatModuleMod(loader.Module):
                     message,
                     self.strings["userinfo"].format(
                         common_chats_count=userinfo.get("common_chats_count") or 0,
-                        phone=userinfo.get("phone") or self.strings["no"],
                         common_chats=(
                             ", ".join(
                                 [
