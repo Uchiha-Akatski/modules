@@ -1,4 +1,5 @@
-# meta developer: @xdesai
+# Original developer: @xdesai
+# meta developer: @Itachi_Uchiha_sss
 
 from .. import loader, utils
 import socket
