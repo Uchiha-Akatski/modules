@@ -1,3 +1,4 @@
+# Original developer: @xdesai
 # meta developer: @Itachi_Uchiha_sss
 
 import html
