@@ -1,6 +1,6 @@
 # This module was intended as a test module to test the functionality of tags for watchers, but I decided to finish it and upload it to the repository.
-# Thanks to @Itachi_Uchiha_sss and @Sheo_Mad for the idea of automatic reading of PMs.
-# meta developer: @xdesai
+# Thank you to @Itachi_Uchiha_sss and @Sheo_Mad for the idea of automatically reading private messages, and also to the original developer for recreating the @xdesai module.
+# meta developer: @Itachi_Uchiha_sss
 
 import logging
 from .. import utils, loader, main
