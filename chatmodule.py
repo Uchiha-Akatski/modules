@@ -1,4 +1,5 @@
-# meta developer: @xdesai
+# Original developer: @xdesai
+# meta developer: @Itachi_Uchiha_sss
 # scope: disable_onload_docs
 # packurl: https://raw.githubusercontent.com/Uchiha-Akatski/modules/refs/heads/main/translations/chatmodule.yml
 
