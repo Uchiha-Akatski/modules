@@ -3,8 +3,10 @@
 # meta developer: @Itachi_Uchiha_sss
 
 import logging
+from io import BytesIO
 from .. import utils, loader, main
 from telethon.tl.functions.messages import MarkDialogUnreadRequest
+from aiogram.types import BufferedInputFile
 
 logger = logging.getLogger("TagWatcher")
 
@@ -32,6 +34,14 @@ class TagWatcher(loader.Module):
         "msg_link_btn": "<a href='{msg_url}'>Go to message</a>",
         "first_msg": "<b>This is the channel where you will receive notifications when someone mentions you in chats.</b>\n\nYou can disable notifications using the <code>{prefix}tagwatcher</code> (<code>{prefix}tw</code>) command.",
         "request_join_reason": "Stay tuned for updates.",
+        "media_voice": "🎤 Voice message",
+        "media_video_note": "🔄 Video note (round video)",
+        "media_photo": "🖼️ Photo",
+        "media_video": "🎥 Video",
+        "reply_voice": "🎤 Voice message",
+        "reply_video_note": "🔄 Video note (round video)",
+        "reply_photo": "🖼️ Photo",
+        "reply_video": "🎥 Video",
     }
     strings_ru = {
         "_cls_doc": "Сообщает когда вас отмечают в чатах.",
@@ -52,6 +62,14 @@ class TagWatcher(loader.Module):
         "msg_link_btn": "<a href='{msg_url}'>Перейти к сообщению</a>",
         "first_msg": "<b>Это канал, в который вы будете получать уведомления, когда кто-то упомянет вас в чатах.</b>\n\nВы можете отключить уведомления с помощью команды <code>{prefix}tagwatcher</code> (<code>{prefix}tw</code>).",
         "request_join_reason": "Следите за обновлениями модулей.",
+        "media_voice": "🎤 Голосовое сообщение",
+        "media_video_note": "🔄 Видеосообщение (кружок)",
+        "media_photo": "🖼️ Фото",
+        "media_video": "🎥 Видео",
+        "reply_voice": "🎤 Голосовое сообщение",
+        "reply_video_note": "🔄 Видеосообщение (кружок)",
+        "reply_photo": "🖼️ Фото",
+        "reply_video": "🎥 Видео",
     }
 
     def __init__(self) -> None:
@@ -132,6 +150,43 @@ class TagWatcher(loader.Module):
             icon_emoji_id=5409025823388741707,
         )
 
+    def get_media_type(self, m):
+        """Определяет тип медиа в сообщении."""
+        if not m:
+            return None
+        if m.voice:
+            return "voice"
+        if m.video_note:
+            return "video_note"
+        if m.photo:
+            return "photo"
+        if m.video:
+            return "video"
+        return None
+
+    async def download_media(self, m):
+        """Скачивает медиа и возвращает его в виде байтов."""
+        try:
+            media_type = self.get_media_type(m)
+            if not media_type:
+                return None, None, None
+            
+            file = BytesIO()
+            await self._client.download_file(m.media, file)
+            file.seek(0)
+            
+            ext = {
+                "voice": ".ogg",
+                "video_note": ".mp4",
+                "photo": ".jpg",
+                "video": ".mp4"
+            }.get(media_type, ".bin")
+            
+            return file, ext, media_type
+        except Exception as e:
+            logger.error(f"Error downloading media: {e}")
+            return None, None, None
+
     async def render_text(self, m):
         if self.config["custom_notif_text"]:
             text = self.config["custom_notif_text"]
@@ -153,22 +208,36 @@ class TagWatcher(loader.Module):
             if sender
             else "Unknown"
         )
-        msg_content = (
-            utils.escape_html(m.message)
-            if m.message
-            else self.strings["no_message_content"]
-        )
+        
+        msg_content = ""
+        if m.message:
+            msg_content = utils.escape_html(m.message)
+        else:
+            media_type = self.get_media_type(m)
+            if media_type:
+                msg_content = self.strings[f"media_{media_type}"]
+            else:
+                msg_content = self.strings["no_message_content"]
+        
         id = sender.id if sender else 0
         reply_content = ""
+        reply_media_info = None
         if m.is_reply:
             reply = await m.get_reply_message()
             if reply:
-                reply_content = (
-                    utils.escape_html(reply.message)
-                    if reply.message
-                    else self.strings["no_message_content"]
-                )
-        return text.format(
+                if reply.message:
+                    reply_content = utils.escape_html(reply.message)
+                else:
+                    reply_media_type = self.get_media_type(reply)
+                    if reply_media_type:
+                        reply_content = self.strings[f"reply_{reply_media_type}"]
+                        file, ext, media_type = await self.download_media(reply)
+                        if file:
+                            reply_media_info = (file, ext, media_type)
+                    else:
+                        reply_content = self.strings["no_message_content"]
+        
+        formatted_text = text.format(
             title=title,
             name=name,
             chat_id=chat.id,
@@ -177,6 +246,8 @@ class TagWatcher(loader.Module):
             reply_content=reply_content,
             link=await m.link,
         )
+        
+        return formatted_text, reply_media_info
 
     @loader.command(
         ru_doc="Вкл/выкл TagWatcher.",
@@ -236,11 +307,61 @@ class TagWatcher(loader.Module):
                 if hasattr(sender, "bot"):
                     if sender.bot:
                         return
-            await self.inline.bot.send_message(
-                int(f"-100{self.asset_channel}"),
-                await self.render_text(m),
-                disable_web_page_preview=True,
-                message_thread_id=self._notif_topic.id,
-            )
+            
+            text, reply_media_info = await self.render_text(m)
+            chat_id = int(f"-100{self.asset_channel}")
+            
+            if reply_media_info:
+                file, ext, media_type = reply_media_info
+                input_file = BufferedInputFile(file.getvalue(), filename=f"media{ext}")
+                
+                try:
+                    if media_type == "voice":
+                        await self.inline.bot.send_voice(
+                            chat_id,
+                            input_file,
+                            caption=text,
+                            message_thread_id=self._notif_topic.id,
+                            parse_mode="HTML"
+                        )
+                    elif media_type == "video_note":
+                        await self.inline.bot.send_video_note(
+                            chat_id,
+                            input_file,
+                            message_thread_id=self._notif_topic.id
+                        )
+                        await self.inline.bot.send_message(
+                            chat_id,
+                            text,
+                            disable_web_page_preview=True,
+                            message_thread_id=self._notif_topic.id,
+                            parse_mode="HTML"
+                        )
+                    elif media_type == "photo":
+                        await self.inline.bot.send_photo(
+                            chat_id,
+                            input_file,
+                            caption=text,
+                            message_thread_id=self._notif_topic.id,
+                            parse_mode="HTML"
+                        )
+                    elif media_type == "video":
+                        await self.inline.bot.send_video(
+                            chat_id,
+                            input_file,
+                            caption=text,
+                            message_thread_id=self._notif_topic.id,
+                            parse_mode="HTML"
+                        )
+                except Exception as e:
+                    logger.error(f"Error sending media: {e}")
+            else:
+                await self.inline.bot.send_message(
+                    chat_id,
+                    text,
+                    disable_web_page_preview=True,
+                    message_thread_id=self._notif_topic.id,
+                    parse_mode="HTML"
+                )
         except Exception as e:
-            logger.error(e)
+            logger.error(f"Error in inform: {e}")
