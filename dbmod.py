@@ -17,8 +17,6 @@ class DBMod(loader.Module):
         "del_btn": "❌ Delete",
         "not_found": "Key {key} not found in Database",
         "too_long": "⚠️ Data is too large ({size} chars). Showing first {limit} chars:\n\n{data}\n\n... (truncated)",
-        "data_too_large": "⚠️ Data is too large ({size} chars). Download as file?",
-        "download_btn": "📥 Download as file",
     }
 
     strings_ru = {
@@ -29,8 +27,6 @@ class DBMod(loader.Module):
         "del_btn": "❌ Очистить",
         "not_found": "Ключ {key} не найден в базе данных",
         "too_long": "⚠️ Данные слишком большие ({size} символов). Показано первых {limit} символов:\n\n{data}\n\n... (обрезано)",
-        "data_too_large": "⚠️ Данные слишком большие ({size} символов). Скачать как файл?",
-        "download_btn": "📥 Скачать как файл",
     }
 
     MAX_MESSAGE_LEN = 4096
@@ -56,53 +52,26 @@ class DBMod(loader.Module):
             data_str = str(item[1])
             data_len = len(data_str)
             
-            # Если данные слишком большие
+            # Если данные слишком большие - обрезаем
             if data_len > self.MAX_PRE_CONTENT:
-                # Обрезаем данные
                 truncated = data_str[:self.MAX_PRE_CONTENT]
                 text = self.strings["too_long"].format(
                     size=data_len,
                     limit=self.MAX_PRE_CONTENT,
                     data=html.escape(truncated)
                 )
-                
-                # Создаем клавиатуру с опцией скачивания
-                markup = self.generate_delete_markup_with_download(item)
             else:
                 # Нормальные данные
                 text = f"<pre><code class='language-{item[0]}'>{html.escape(data_str)}</code></pre>"
-                markup = self.generate_delete_markup(item)
+            
+            # Обычная клавиатура без кнопки скачивания
+            markup = self.generate_delete_markup(item)
             
             await call.edit(text, reply_markup=markup)
             return True
             
         await call.answer(self.strings["not_found"].format(key=item[0]))
         return False
-
-    def generate_delete_markup_with_download(self, item):
-        """Generate markup with download option for large data"""
-        markup = [[]]
-        markup[-1].append(
-            {
-                "text": self.strings["back_btn"],
-                "callback": self.main_menu,
-            }
-        )
-        markup[-1].append(
-            {
-                "text": self.strings["download_btn"],
-                "callback": self.download_data,
-                "args": [item],
-            }
-        )
-        markup[-1].append(
-            {
-                "text": self.strings["del_btn"],
-                "callback": self.delete_db,
-                "args": [item],
-            }
-        )
-        return markup
 
     def generate_delete_markup(self, item):
         """Generate markup for inline form"""
@@ -121,31 +90,6 @@ class DBMod(loader.Module):
             }
         )
         return markup
-
-    async def download_data(self, call, item):
-        """Send database content as a file"""
-        if item[0] not in self._db.keys():
-            await call.answer(self.strings["not_found"].format(key=item[0]))
-            return
-        
-        data_str = str(item[1])
-        
-        # Создаем файл в памяти
-        import io
-        file_content = f"Module: {item[0]}\n\n{data_str}"
-        file_bytes = io.BytesIO(file_content.encode('utf-8'))
-        file_bytes.name = f"{item[0]}_db_data.txt"
-        
-        # Отправляем файл
-        await call.message.answer_document(
-            document=file_bytes,
-            caption=f"📦 Database data for module: {item[0]}",
-            reply_to_message_id=call.message.message_id
-        )
-        await call.answer("✅ Data sent as file")
-        
-        # Возвращаемся в меню
-        await self.main_menu(call.message)
 
     async def main_menu(self, message, page_num=0):
         await utils.answer(
