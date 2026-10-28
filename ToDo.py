@@ -49,8 +49,13 @@ class TodoMod(loader.Module):
             "🚫 Private",
         ]
 
+    @loader.command(
+        ru_doc="[значения:int] <элемент> — Добавить задачу",
+        en_doc="[importance:int] <item> - Add task",
+        ua_doc="[важливість:int] <елемент> — Додати завдання"
+    )
     async def tdcmd(self, message: Message):
-        """[importance:int] <item> - Add task"""
+        
 
         args = utils.get_args_raw(message)
         try:
@@ -85,8 +90,12 @@ class TodoMod(loader.Module):
             ),
         )
 
+    @loader.command(
+        ru_doc="Показать активные задачи",
+        en_doc="Show active tasks",
+        ua_doc="Показати активні завдання"
+    )
     async def tdlcmd(self, message: Message):
-        """Show active tasks"""
         res = "<blockquote><b>#ToDo</b></blockquote>\n"
         items = {len(self.imp_levels) - i - 1: [] for i in range(len(self.imp_levels))}
         for item_id, item in self.todolist.items():
@@ -106,8 +115,12 @@ class TodoMod(loader.Module):
 
         await utils.answer(message, res)
 
+    @loader.command(
+        ru_doc="<id> - Удалить задачу со списка дел",
+        en_doc="<id> - Remove task from todo",
+        ua_doc="<id> - Видалити завдання зі списку справ"
+    )
     async def utdcmd(self, message: Message):
-        """<id> - Remove task from todo"""
         args = utils.get_args_raw(message)
         if args.startswith("#"):
             args = args[1:]
